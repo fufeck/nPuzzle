@@ -16,30 +16,14 @@
 Npuzzle::Npuzzle(std::string const &fileName) : _n(0) {
 	// initialiser le jeu a sont etat de depart
 	this->_createMap(fileName);
+	this->_createFinishMap();
 
 	// trouver quel est le jeu dans son etat fini, pour ne pas le rechercher a chaque fois
-	for (int y = 0; y < this->_n; ++y) {
-		this->_mapFinish.push_back(std::vector<int>(this->_n));
-		for (int x = 0; x < this->_n; ++x) {
-			this->_mapFinish[y][x] = static_cast<int>(this->_n * y + x);
-		}
-	}
+
 	// on met le premier noeud dans l'open list
   
-	for (int y = 0; y < this->_n; ++y) {
-		for (int x = 0; x < this->_n; ++x) {
-			std::cout <<  this->_mapFinish[y][x] << " ";
-		}
-		std::cout << std::endl;
-	}
-	std::cout 	<< std::endl;
-	for (int y = 0; y < this->_n; ++y) {
-		for (int x = 0; x < this->_n; ++x) {
-			std::cout <<  this->_mapStart[y][x] << " ";
-		}
-		std::cout << std::endl;
-	}
-	std::cout 	<< std::endl;
+  	this->_displayMap(this->_mapStart);
+  	this->_displayMap(this->_mapFinish);
 
 	Noeud noeud;
 
@@ -55,13 +39,20 @@ Npuzzle::~Npuzzle() {
 
 }
 
-
-/************************/
-/*******HEURISTIQUE******/
-/************************/
+void				Npuzzle::_displayMap(Map const &map) const {
+	for (int y = 0; y < this->_n; ++y) {
+		for (int x = 0; x < this->_n; ++x) {
+			if (this->_n > 3 && map[y][x] < 10) {
+				std::cout << " ";
+			}
+			std::cout << map[y][x] << " ";
+		}
+		std::cout << std::endl;
+	}
+	std::cout << std::endl;
+}
 
 void				Npuzzle::_createMap(std::string const &filename) {
-	//std::istringstream 	nb;
 	std::ifstream   	file;
 	std::string 		line;
 	int 				nbLine = 0;
@@ -96,39 +87,18 @@ void				Npuzzle::_createMap(std::string const &filename) {
 	file.close();
 }
 
-int 				Npuzzle::_getDistanceManhattan(const Point &p1, const Point &p2) {
-
-	return (p1.y - p2.y) * (p1.y - p2.y) + (p1.x - p2.x) * (p1.x - p2.x);
-}
- 
-Point 				Npuzzle::_getPositionFinale(int valeur) {
-	Point 			p;
+void				Npuzzle::_createFinishMap(void) {
 	for (int y = 0; y < this->_n; ++y) {
+		this->_mapFinish.push_back(std::vector<int>(this->_n));
 		for (int x = 0; x < this->_n; ++x) {
-			if (this->_mapFinish[y][x] == valeur) {
-				p.x = x;
-				p.y = y;
-				return p;
-			}
-		}
-	}
-	std::cerr << "ERROR : _getPositionFinale Fail." << std::endl;
-	throw std::exception();
-	return p;
-}
- 
-int 				Npuzzle::_getHeuristiqueManathan(const Map &map) {
-	int 			k = 0;
-
-	for (int y = 0; y < this->_n; ++y) {
-		for (int x = 0; x < this->_n; ++x) {
-			Point p;
+			int 	v = static_cast<int>(this->_n * y + x);
+			this->_mapFinish[y][x] = v;
+			Point	p;
 			p.x = x;
 			p.y = y;
-			k += this->_getDistanceManhattan(p, this->_getPositionFinale(map[y][x]));
+			this->_pointFinish[v] = p;
 		}
 	}
-	return k;
 }
 
 
@@ -136,38 +106,41 @@ int 				Npuzzle::_getHeuristiqueManathan(const Map &map) {
 /******MANAGE*NOEUD******/
 /************************/
 
+int 				Npuzzle::_getHeuristiqueManathan(const Map &map) {
+	int 			k = 0;
+
+	for (int y = 0; y < this->_n; ++y) {
+		for (int x = 0; x < this->_n; ++x) {
+			Point p = this->_pointFinish[map[y][x]];
+			k += (y - p.y) * (y - p.y) + (x - p.x) * (x - p.x);
+		}
+	}
+	return k;
+}
+
 
 void				Npuzzle::_bestMapOpened(Map &ret) {
 	ret = this->_openList.begin()->first;
 	int 			min = this->_openList.begin()->second.F;
 
-	int i = 0;
 	for (Liste::iterator it = ++this->_openList.begin(); it != this->_openList.end(); ++it) {
-		std::cout << it->second.F << std::endl;
-		std::cout << it->second.G << std::endl;
-		std::cout << it->second.H << std::endl << std::endl;
 		if (it->second.F < min) {
-			std::cout << "i = " << i  << std::endl; 
 			ret = it->first;
 			min = it->second.F;
 		}
-		i++;
 	}
 }
 
+//METTRE EMPTY CASE DANS NOEUD
 Point				Npuzzle::_getEmptyCase(Map const &map) {
 	Point 			p;
 	p.x = 0;
 	p.y = 0;
-	// on cherche la case vide
    for (int y = 0; y < this->_n; ++y) {
 		for (int x = 0; x < this->_n; ++x) {
 			if (map[y][x] == EMPTY_CASE) {
-				//std::cout << "RET : " << x << ", " << y << std::endl;
 				p.x = x;
 				p.y = y;
-				//std::cout << "RET EMPTY_CASE : " << p.x << ", " << p.y << std::endl;
-				//sleep(1);
 				return p;
 			}
 		}
@@ -180,21 +153,21 @@ Point				Npuzzle::_getEmptyCase(Map const &map) {
 Noeud				Npuzzle::_createNoeud(Noeud &noeud, Map &nMap, Map &map) {
 	Noeud 			nNoeud;
 
-	std::cout << "CREATE NO" << std::endl;
 	nNoeud.G = noeud.G + 1;
 	nNoeud.H = this->_getHeuristiqueManathan(nMap);
 	nNoeud.F = nNoeud.G + nNoeud.H;
 	nNoeud.parent = map;
-	return noeud;
+	return nNoeud;
 }
 
 void 				Npuzzle::_addInOpenList(const Map &map, const Noeud &newNoeud, const Noeud &oldNoeud) {
 	//mutex.Lock();
-	if (this->_openList.find(map) == this->_openList.end()) { // pas encore dans la liste ouverte, donc on l'ajoute
+	if (this->_openList.find(map) == this->_openList.end() && \
+		this->_closedList.find(map) == this->_closedList.end()) {
 		this->_openList[map] = newNoeud;
-	} else { // déjà dans la liste ouverte, avons nous trouvé un meilleur chemin ?
+	} else {
 		if (newNoeud.F < oldNoeud.F) {
-		   this->_openList[map] = newNoeud;
+		   	this->_openList[map] = newNoeud;
 		}
 	}
 	//mutex.Unlock();
@@ -206,18 +179,11 @@ void 				Npuzzle::_addInOpenList(const Map &map, const Noeud &newNoeud, const No
 
 
 void 				Npuzzle::_addAllOpenList(Noeud &noeud, Map &map, Point &p) {
-	//std::cout << "ONE" << std::endl;
 	if (p.x > 0) {
-		//std::cout << "merde" << std::endl;
-		//std::cout << p.y << std::endl;
-		//std::cout << p.x << std::endl;
 		Map 		nMap = map;
 		nMap[p.y][p.x] = map[p.y][p.x - 1];
 		nMap[p.y][p.x - 1] = map[p.y][p.x];
-		
-		//std::cout << "ONE ONE" << std::endl;
 		Noeud 		nNoeud = this->_createNoeud(noeud, nMap, map);
-		//std::cout << "ONE TWO" << std::endl;
 		this->_addInOpenList(nMap, nNoeud, noeud);
 	}
 
@@ -258,34 +224,24 @@ void 				Npuzzle::solveNpuzzle(void) {
 
 		//mutex.Lock();
 
-		// recuperation du meilleur noeud
-		//std::cout << "START" << std::endl;
 		this->_bestMapOpened(map);
 		noeud = this->_openList[map];
-
-		// passage dans la liste fermee
 		this->_closedList[map] = noeud;
-
-		// suppression de la liste ouverte
 		this->_openList.erase(map);
 
 		//mutex.Unlock();
 
-		// check end
 		if (map == this->_mapFinish) {
 			break ;
 		}
 
-		//std::cout << "GO" << std::endl;
 		emptyCase = this->_getEmptyCase(map);
-		//std::cout << "STACH" << std::endl;
 		++nombre_tentative;
 		this->_addAllOpenList(noeud, map, emptyCase);
-		//std::cout << "END" << std::endl;
-		std::cout << "============================" << std::endl;
-		sleep(1);
+		if (nombre_tentative % 1000 == 0) {
+			std::cout << nombre_tentative << std::endl;
+		}
 	}
-
 	if (map != this->_mapFinish) {
 		std::cout << "pas de solution" << std::endl;
 		return;

@@ -26,36 +26,41 @@
 
 typedef std::vector< std::vector<int> > Map;
 
-struct Point {
-
-	int	x;
-	int	y;
+struct 		Point {
+	int		x;
+	int		y;
 };
 
-struct Noeud {
-    int F;
-    int G;
-    int H;
-    Map parent;
+struct 		Noeud {
+    int 	F;
+    int 	G;
+    int 	H;
+    Map 	parent;
+    Point 	emptyCase;
 };
- 
+
+typedef std::map<int, Point> MapInv;
+
 typedef std::map<Map, Noeud> Liste;
 
 class Npuzzle
 {
 protected:
-	int				_n;
+	int					_n;
 
 	Map 				_mapStart;
 	Map					_mapFinish;
 
+	MapInv				_pointFinish;
+
 	Liste				_openList;
 	Liste				_closedList;
 
-	void				_createMap(std::string const &filename);
+	void				_displayMap(Map const &map) const;
 
-	int 				_getDistanceManhattan(const Point &p1, const Point &p2);
-	Point 				_getPositionFinale(int valeur);
+	void				_createMap(std::string const &filename);
+	void				_createFinishMap(void);
+
 	int 				_getHeuristiqueManathan(const Map &map);
 
 	void				_bestMapOpened(Map &ret);
