@@ -18,18 +18,11 @@ Npuzzle::Npuzzle(std::string const &fileName) : _n(0) {
 	this->_createMap(fileName);
 	this->_createFinishMap();
 
-	// trouver quel est le jeu dans son etat fini, pour ne pas le rechercher a chaque fois
-
-	// on met le premier noeud dans l'open list
-  
-  	this->_displayMap(this->_mapStart);
-  	this->_displayMap(this->_mapFinish);
-
 	Noeud noeud;
 
-	noeud.F = 0;
 	noeud.G = 0;
-	noeud.H = this->_getHeuristiqueManathan(this->_mapStart);
+	noeud.H = this->_getDistanceManathan(this->_mapStart);
+	noeud.F = 0;
 	noeud.parent = this->_mapStart;
 	this->_openList[this->_mapStart] = noeud;
 
@@ -37,6 +30,28 @@ Npuzzle::Npuzzle(std::string const &fileName) : _n(0) {
 
 Npuzzle::~Npuzzle() {
 
+}
+
+bool				Npuzzle::_checkSolvable(void) {
+	int a = 0;
+	int b = 0;
+	for (int y = 0; y < this->_n; ++y) {
+		for (int x = 0; x < this->_n; ++x) {
+			int c = this->_mapStart[y][x];
+			Point p = this->_pointFinish[c];
+			if (this->_mapStart[y][x] == EMPTY_CASE) {
+				a = ((y - p.y >= 0) ? (y - p.y) : (-(y - p.y))) + ((x - p.x >= 0) ? (x - p.x) : (-(x - p.x)));
+			} else {
+				b += ((y - p.y >= 0) ? (y - p.y) : (-(y - p.y))) + ((x - p.x >= 0) ? (x - p.x) : (-(x - p.x)));
+			}
+		}
+	}
+	std::cout << a << " == " << b << std::endl;
+	if (a % 2 != b % 2) {
+		std::cerr << "file can't be open" << std::endl;
+		return false;
+	}
+	return true;
 }
 
 void				Npuzzle::_displayMap(Map const &map) const {
@@ -106,15 +121,26 @@ void				Npuzzle::_createFinishMap(void) {
 /******MANAGE*NOEUD******/
 /************************/
 
-int 				Npuzzle::_getHeuristiqueManathan(const Map &map) {
+int 				Npuzzle::_getDistanceManathan(const Map &map) {
 	int 			k = 0;
+	int 			a = 0;
+	int 			b = 0;
 
 	for (int y = 0; y < this->_n; ++y) {
 		for (int x = 0; x < this->_n; ++x) {
 			Point p = this->_pointFinish[map[y][x]];
-			k += (y - p.y) * (y - p.y) + (x - p.x) * (x - p.x);
+			if (this->_mapStart[y][x] == EMPTY_CASE) {
+				a = ((y - p.y >= 0) ? (y - p.y) : (-(y - p.y))) + ((x - p.x >= 0) ? (x - p.x) : (-(x - p.x)));
+			} else {
+				b += ((y - p.y >= 0) ? (y - p.y) : (-(y - p.y))) + ((x - p.x >= 0) ? (x - p.x) : (-(x - p.x)));
+			}
+//			k += ((y - p.y >= 0) ? (y - p.y) : (-(y - p.y))) + ((x - p.x >= 0) ? (x - p.x) : (-(x - p.x)));
 		}
 	}
+	if (a % 2 != b % 2) {
+		return -1;
+	}
+	k = a + b;
 	return k;
 }
 
@@ -154,9 +180,11 @@ Noeud				Npuzzle::_createNoeud(Noeud &noeud, Map &nMap, Map &map) {
 	Noeud 			nNoeud;
 
 	nNoeud.G = noeud.G + 1;
-	nNoeud.H = this->_getHeuristiqueManathan(nMap);
+	nNoeud.H = this->_getDistanceManathan(nMap);
 	nNoeud.F = nNoeud.G + nNoeud.H;
 	nNoeud.parent = map;
+	if (nNoeud.H < 0)
+		this->_closedList[nMap] = nNoeud;
 	return nNoeud;
 }
 
@@ -219,7 +247,8 @@ void 				Npuzzle::solveNpuzzle(void) {
 	Point			emptyCase;
 	Map 			map;
 
-
+//	if (this->_checkSolvable() == false)
+//		return ;
 	while (!this->_openList.empty()) {
 
 		//mutex.Lock();
@@ -241,6 +270,8 @@ void 				Npuzzle::solveNpuzzle(void) {
 		if (nombre_tentative % 1000 == 0) {
 			std::cout << nombre_tentative << std::endl;
 		}
+		//std::cout << "===========================" << std::endl;
+		//sleep(1);
 	}
 	if (map != this->_mapFinish) {
 		std::cout << "pas de solution" << std::endl;

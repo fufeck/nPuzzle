@@ -36,7 +36,7 @@ struct 		Noeud {
     int 	G;
     int 	H;
     Map 	parent;
-    Point 	emptyCase;
+    //Point 	emptyCase;
 };
 
 typedef std::map<int, Point> MapInv;
@@ -56,12 +56,13 @@ protected:
 	Liste				_openList;
 	Liste				_closedList;
 
+	bool				_checkSolvable(void);
 	void				_displayMap(Map const &map) const;
 
 	void				_createMap(std::string const &filename);
 	void				_createFinishMap(void);
 
-	int 				_getHeuristiqueManathan(const Map &map);
+	int 				_getDistanceManathan(const Map &map);
 
 	void				_bestMapOpened(Map &ret);
 	Point				_getEmptyCase(Map const &map);

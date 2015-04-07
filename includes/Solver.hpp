@@ -78,7 +78,7 @@ inline uint heuristiqueManathan(const Jeu &jeu, const Jeu &etatFini) {
     uint k = 0;
     for ( uchar i = 0; i < nombre_de_lignes; ++i) {
         for ( uchar j = 0; j < nombre_de_colonnes; ++j ) {
-            k += distanceManhattan( Point(i, j), localiserPositionFinale(jeu[i][j], etatFini) );
+            k += distanceManhattan(Point(i, j), localiserPositionFinale(jeu[i][j], etatFini));
         }
     }
     return k;
