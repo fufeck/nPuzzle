@@ -14,16 +14,18 @@
 #include "Npuzzle.hpp"
 
 Npuzzle::Npuzzle(std::string const &fileName) : _n(0) {
-	// initialiser le jeu a sont etat de depart
-	this->_createMap(fileName);
+	Point		emptyCase = this->_createMap(fileName);
+	std::cout << this->_n << std::endl;
+	this->_displayMap(this->_mapStart);
 	this->_createFinishMap();
 
 	Noeud noeud;
 
 	noeud.G = 0;
-	noeud.H = this->_getDistanceManathan(this->_mapStart);
+	noeud.H = this->_getHeuristique(this->_mapStart);
 	noeud.F = 0;
 	noeud.parent = this->_mapStart;
+	noeud.emptyCase = emptyCase;
 	this->_openList[this->_mapStart] = noeud;
 
 }
@@ -32,29 +34,11 @@ Npuzzle::~Npuzzle() {
 
 }
 
-bool				Npuzzle::_checkSolvable(void) {
-	int a = 0;
-	int b = 0;
-	for (int y = 0; y < this->_n; ++y) {
-		for (int x = 0; x < this->_n; ++x) {
-			int c = this->_mapStart[y][x];
-			Point p = this->_pointFinish[c];
-			if (this->_mapStart[y][x] == EMPTY_CASE) {
-				a = ((y - p.y >= 0) ? (y - p.y) : (-(y - p.y))) + ((x - p.x >= 0) ? (x - p.x) : (-(x - p.x)));
-			} else {
-				b += ((y - p.y >= 0) ? (y - p.y) : (-(y - p.y))) + ((x - p.x >= 0) ? (x - p.x) : (-(x - p.x)));
-			}
-		}
-	}
-	std::cout << a << " == " << b << std::endl;
-	if (a % 2 != b % 2) {
-		std::cerr << "file can't be open" << std::endl;
-		return false;
-	}
-	return true;
-}
+/************************/
+/******USEFULL*FUNC******/
+/************************/
 
-void				Npuzzle::_displayMap(Map const &map) const {
+void					Npuzzle::_displayMap(Map const &map) const {
 	for (int y = 0; y < this->_n; ++y) {
 		for (int x = 0; x < this->_n; ++x) {
 			if (this->_n > 3 && map[y][x] < 10) {
@@ -67,7 +51,8 @@ void				Npuzzle::_displayMap(Map const &map) const {
 	std::cout << std::endl;
 }
 
-void				Npuzzle::_createMap(std::string const &filename) {
+Point					Npuzzle::_createMap(std::string const &filename) {
+	Point 				emptyCase;
 	std::ifstream   	file;
 	std::string 		line;
 	int 				nbLine = 0;
@@ -94,58 +79,121 @@ void				Npuzzle::_createMap(std::string const &filename) {
 				this->_mapStart.push_back(std::vector<int>(this->_n));
 				for (int i = 0; i < this->_n; ++i) {
 					iss >> this->_mapStart[nbLine - 1][i];
+					if (this->_mapStart[nbLine - 1][i] ==  EMPTY_CASE) {
+						emptyCase.y = nbLine - 1;
+						emptyCase.x = i;
+					}
 				}
 			}
 			nbLine++;
 		}
 	}
 	file.close();
+	return emptyCase;
 }
 
-void				Npuzzle::_createFinishMap(void) {
-	for (int y = 0; y < this->_n; ++y) {
+void					Npuzzle::_createFinishMap(void) {
+	int 				nb = 1;
+	int 				max = this->_n * this->_n;
+	int 				x = 0;
+	int 				y = 0;
+	int 				nBoucle = 0;
+
+	for (int y = 0; y < this->_n; ++y) {	
 		this->_mapFinish.push_back(std::vector<int>(this->_n));
-		for (int x = 0; x < this->_n; ++x) {
-			int 	v = static_cast<int>(this->_n * y + x);
-			this->_mapFinish[y][x] = v;
+	}
+	while (nb < max) {
+		while (x < this->_n - nBoucle && nb < max) {
+			this->_mapFinish[y][x] = nb;
 			Point	p;
 			p.x = x;
 			p.y = y;
-			this->_pointFinish[v] = p;
+			this->_pointFinish[nb] = p;
+			nb++;
+			x++;	
+		}
+		if (nb > max)
+			break ;
+		y++;
+		x--;
+		while (y < this->_n - nBoucle && nb < max) {
+			this->_mapFinish[y][x] = nb;
+			Point	p;
+			p.x = x;
+			p.y = y;
+			this->_pointFinish[nb] = p;
+			nb++;
+			y++;
+		}
+		if (nb > max)
+			break ;
+		x--;
+		y--;
+		while (x >= nBoucle && nb < max) {
+			this->_mapFinish[y][x] = nb;
+			Point	p;
+			p.x = x;
+			p.y = y;
+			this->_pointFinish[nb] = p;
+			nb++;
+			x--;
+		}
+		if (nb > max)
+			break ;
+		x++;
+		y--;
+		nBoucle++;
+		while (y > nBoucle && nb < max) {
+			this->_mapFinish[y][x] = nb;
+			Point	p;
+			p.x = x;
+			p.y = y;
+			this->_pointFinish[nb] = p;
+			nb++;
+			y--;
 		}
 	}
+	this->_displayMap(this->_mapFinish);
 }
 
+/************************/
+/******HEURISTIQUES******/
+/************************/
+
+int 					Npuzzle::_heuristiqueManathan(const Map &map) {
+	int 				k = 0;
+
+	for (int y = 0; y < this->_n; ++y) {
+		for (int x = 0; x < this->_n; ++x) {
+			Point 		p = this->_pointFinish[map[y][x]];
+			k += ((y - p.y >= 0) ? (y - p.y) : (-(y - p.y))) + ((x - p.x >= 0) ? (x - p.x) : (-(x - p.x)));
+		}
+	}
+	return k;
+}
+
+int 					Npuzzle::_heuristiqueSimple(const Map &map) {
+	int 				k = 0;
+
+	for (int y = 0; y < this->_n; ++y) {
+		for (int x = 0; x < this->_n; ++x) {
+			if (map[y][x] != this->_mapFinish[y][x])
+				++k;
+		}
+	}
+	return k;
+}
+
+int 					Npuzzle::_getHeuristique(const Map &map) {
+
+	return this->_heuristiqueManathan(map);
+}
 
 /************************/
 /******MANAGE*NOEUD******/
 /************************/
 
-int 				Npuzzle::_getDistanceManathan(const Map &map) {
-	int 			k = 0;
-	int 			a = 0;
-	int 			b = 0;
-
-	for (int y = 0; y < this->_n; ++y) {
-		for (int x = 0; x < this->_n; ++x) {
-			Point p = this->_pointFinish[map[y][x]];
-			if (this->_mapStart[y][x] == EMPTY_CASE) {
-				a = ((y - p.y >= 0) ? (y - p.y) : (-(y - p.y))) + ((x - p.x >= 0) ? (x - p.x) : (-(x - p.x)));
-			} else {
-				b += ((y - p.y >= 0) ? (y - p.y) : (-(y - p.y))) + ((x - p.x >= 0) ? (x - p.x) : (-(x - p.x)));
-			}
-//			k += ((y - p.y >= 0) ? (y - p.y) : (-(y - p.y))) + ((x - p.x >= 0) ? (x - p.x) : (-(x - p.x)));
-		}
-	}
-	if (a % 2 != b % 2) {
-		return -1;
-	}
-	k = a + b;
-	return k;
-}
-
-
-void				Npuzzle::_bestMapOpened(Map &ret) {
+void					Npuzzle::_bestMapOpened(Map &ret) {
 	ret = this->_openList.begin()->first;
 	int 			min = this->_openList.begin()->second.F;
 
@@ -157,140 +205,97 @@ void				Npuzzle::_bestMapOpened(Map &ret) {
 	}
 }
 
-//METTRE EMPTY CASE DANS NOEUD
-Point				Npuzzle::_getEmptyCase(Map const &map) {
-	Point 			p;
-	p.x = 0;
-	p.y = 0;
-   for (int y = 0; y < this->_n; ++y) {
-		for (int x = 0; x < this->_n; ++x) {
-			if (map[y][x] == EMPTY_CASE) {
-				p.x = x;
-				p.y = y;
-				return p;
-			}
-		}
-	}
-	std::cerr << "ERROR : _getEmptyCase Fail." << std::endl;
-	throw std::exception();
-	return p;
-}
-
-Noeud				Npuzzle::_createNoeud(Noeud &noeud, Map &nMap, Map &map) {
+Noeud					Npuzzle::_createNoeud(Noeud const &noeud, Map const &nMap, Map const &map, Point const &nEmptyCase) {
 	Noeud 			nNoeud;
 
 	nNoeud.G = noeud.G + 1;
-	nNoeud.H = this->_getDistanceManathan(nMap);
+	nNoeud.H = this->_getHeuristique(nMap);
 	nNoeud.F = nNoeud.G + nNoeud.H;
 	nNoeud.parent = map;
+	nNoeud.emptyCase = nEmptyCase;
 	if (nNoeud.H < 0)
 		this->_closedList[nMap] = nNoeud;
 	return nNoeud;
 }
 
-void 				Npuzzle::_addInOpenList(const Map &map, const Noeud &newNoeud, const Noeud &oldNoeud) {
-	//mutex.Lock();
+void 					Npuzzle::_addInOpenList(const Map &map, Noeud const &newNoeud, Noeud const &oldNoeud) {
 	if (this->_openList.find(map) == this->_openList.end() && \
 		this->_closedList.find(map) == this->_closedList.end()) {
 		this->_openList[map] = newNoeud;
 	} else {
 		if (newNoeud.F < oldNoeud.F) {
-		   	this->_openList[map] = newNoeud;
+			this->_openList[map] = newNoeud;
 		}
 	}
-	//mutex.Unlock();
 }
 
-/************************/
-/******SOLVE*PUZZLE******/
-/************************/
+void 					Npuzzle::_addAllOpenList(Noeud const &noeud, Map const &map) {
+	Point				p = noeud.emptyCase;
 
-
-void 				Npuzzle::_addAllOpenList(Noeud &noeud, Map &map, Point &p) {
 	if (p.x > 0) {
 		Map 		nMap = map;
 		nMap[p.y][p.x] = map[p.y][p.x - 1];
 		nMap[p.y][p.x - 1] = map[p.y][p.x];
-		Noeud 		nNoeud = this->_createNoeud(noeud, nMap, map);
-		this->_addInOpenList(nMap, nNoeud, noeud);
+		Point		nEmptyCase;
+		nEmptyCase.y = p.y;
+		nEmptyCase.x = p.x - 1;
+		this->_addInOpenList(nMap, this->_createNoeud(noeud, nMap, map, nEmptyCase), noeud);
 	}
 
 	if (p.x < this->_n - 1) {
 		Map 		nMap = map;
 		nMap[p.y][p.x] = map[p.y][p.x + 1];
 		nMap[p.y][p.x + 1] = map[p.y][p.x];
-		Noeud 		nNoeud = this->_createNoeud(noeud, nMap, map);
-		this->_addInOpenList(nMap, nNoeud, noeud);
+		Point		nEmptyCase;
+		nEmptyCase.y = p.y;
+		nEmptyCase.x = p.x + 1;
+		this->_addInOpenList(nMap, this->_createNoeud(noeud, nMap, map, nEmptyCase), noeud);
 	}
 
 	if (p.y > 0) {
 		Map 		nMap = map;
 		nMap[p.y][p.x] = map[p.y - 1][p.x];
 		nMap[p.y - 1][p.x] = map[p.y][p.x];
-		Noeud 		nNoeud = this->_createNoeud(noeud, nMap, map);
-		this->_addInOpenList(nMap, nNoeud, noeud);
+		Point		nEmptyCase;
+		nEmptyCase.y = p.y - 1;
+		nEmptyCase.x = p.x;
+		this->_addInOpenList(nMap, this->_createNoeud(noeud, nMap, map, nEmptyCase), noeud);
 	}
 
 	if (p.y < this->_n - 1) {
 		Map 		nMap = map;
 		nMap[p.y][p.x] = map[p.y + 1][p.x];
 		nMap[p.y + 1][p.x] = map[p.y][p.x];
-		Noeud 		nNoeud = this->_createNoeud(noeud, nMap, map);
-		this->_addInOpenList(nMap, nNoeud, noeud);
+		Point		nEmptyCase;
+		nEmptyCase.y = p.y + 1;
+		nEmptyCase.x = p.x;
+		this->_addInOpenList(nMap, this->_createNoeud(noeud, nMap, map, nEmptyCase), noeud);
 	}
 }
 
-void 				Npuzzle::solveNpuzzle(void) {
+/************************/
+/******SOLVE*PUZZLE******/
+/************************/
 
-	int 			nombre_tentative = 0;
-	Noeud 			noeud;
-	Point			emptyCase;
-	Map 			map;
+void 					Npuzzle::run(void) {
+	int 				nombre_tentative = 0;
+	Noeud 				noeud;
+	Map 				map;
 
-//	if (this->_checkSolvable() == false)
-//		return ;
 	while (!this->_openList.empty()) {
-
-		//mutex.Lock();
-
 		this->_bestMapOpened(map);
 		noeud = this->_openList[map];
 		this->_closedList[map] = noeud;
 		this->_openList.erase(map);
-
-		//mutex.Unlock();
-
+		++nombre_tentative;
 		if (map == this->_mapFinish) {
 			break ;
 		}
-
-		emptyCase = this->_getEmptyCase(map);
-		++nombre_tentative;
-		this->_addAllOpenList(noeud, map, emptyCase);
-		if (nombre_tentative % 1000 == 0) {
-			std::cout << nombre_tentative << std::endl;
-		}
-		//std::cout << "===========================" << std::endl;
-		//sleep(1);
+		this->_addAllOpenList(noeud, map);
 	}
 	if (map != this->_mapFinish) {
 		std::cout << "pas de solution" << std::endl;
 		return;
 	}
 	std::cout << "solution trouvée en " << nombre_tentative << " tentatives" << std::endl;
-/*
-	std::vector<Jeu> vj;
-	vj.push_back(jeu);
-	while ( noeud.parent != m_jeu ) {
-		jeu = noeud.parent;
-		vj.push_back( jeu );
-		noeud = closedList[jeu];
-	}
-	std::cout << "solution en " << vj.size() << " coups :" << std::endl;
-
-	afficherJeu(m_jeu);
-	for ( std::vector<Jeu>::iterator it = --vj.end(); it != vj.begin(); --it) {
-		afficherJeu(*it);
-	}
-	afficherJeu(m_etatFini);*/
 }

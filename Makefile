@@ -18,9 +18,9 @@ RM			=	rm -rf
 
 INCLUDES	=	-Iincludes
 
-LIBS		=	
+LIBS		=	-std=c++0x -O2 -Wno-write-strings
 
-CFLAGS		=	-Werror -Wall -Wextra
+CFLAGS		=	-Werror -Wall -Wextra -std=c++0x -O2 -Wno-write-strings
 
 SRCS		=	srcs/main.cpp			\
 				srcs/Npuzzle.cpp				

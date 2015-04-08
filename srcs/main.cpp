@@ -10,17 +10,31 @@
 //                                                                            //
 // ************************************************************************** //
 
+#include <thread>
 #include <string>
 #include "Npuzzle.hpp"
 
+void foo(void *ptr) 
+{
+	Npuzzle 	*puzzle = static_cast<Npuzzle *>(ptr);
+	puzzle->run();
+}
+/*
+void foo(void *ptr) 
+{
+	Npuzzle			*puzzle = static_cast<Npuzzle *>(ptr);
+	puzzle->run();
+}
+*/
 int 			main(int ac, char **av) {
 
 	if (ac == 2) {
 		std::string	fileName(av[1]);
 		
 		try {
-			Npuzzle	puzzle(fileName);
-			puzzle.solveNpuzzle();
+			Npuzzle			puzzle(fileName);
+
+			puzzle.run();
 		} catch (std::exception & e) {
 			return 1;
 		}
