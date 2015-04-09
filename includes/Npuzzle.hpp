@@ -14,6 +14,7 @@
 # define NPUZZLE_HPP
 
 #include <thread>
+#include <mutex>
 #include <iostream>
 #include <exception>
 #include <sstream>
@@ -23,7 +24,10 @@
 #include <vector>
 #include <map>
 
+enum eMove { NO, LEFT, RIGHT, UP, DOWN };
+
 # define EMPTY_CASE	0
+# define NUM_THREADS 4
 
 typedef std::vector< std::vector<int> > Map;
 
@@ -33,10 +37,11 @@ struct 		Point {
 };
 
 struct 		Noeud {
-    int 	F;
+    //int 	F;
     int 	G;
-    int 	H;
-    Map 	parent;
+    int 	F;
+    int 	parent;
+    //Map 	parent;
     Point 	emptyCase;
 };
 
@@ -55,6 +60,7 @@ protected:
 	MapInv				_pointFinish;
 
 	Liste				_openList;
+	Liste				_saveList;
 	Liste				_closedList;
 
 
@@ -62,13 +68,26 @@ protected:
 	Point				_createMap(std::string const &filename);
 	void				_createFinishMap(void);
 
-	int 				_heuristiqueManathan(const Map &map);
-	int 				_heuristiqueSimple(const Map &map);
-	int 				_getHeuristique(const Map &map);
 
+	int 				_heuristiqueManathanMap(const Map &map);
+	int 				_heuristiqueSimpleMap(const Map &map);
+	int 				_getHeuristiqueMap(const Map &map);
+	int 				_heuristiqueManathanLoop(Map const &map, Point const &p1, Point const &p2);
+	int 				_heuristiqueSimpleLoop(Map const &map, Point const &p1, Point const &p2);
+	int 				_getHeuristiqueLoop(Map const &map, Point const &p1, Point const &p2);
+
+
+	void 				_updateOpened(void);
+	void 				_saveOpened(int moyenn);
 	void				_bestMapOpened(Map &ret);
-	Noeud				_createNoeud(Noeud const &noeud, Map const &nMap, Map const &map, Point const &nEmptyCase);
-	void 				_addInOpenList(const Map &map, const Noeud &nouveauNoeud, const Noeud &noeudRemplace);
+
+	Noeud				_createNoeud(int const move, Point const emptyCase, int const f);
+	void 				_addInOpenList(const Map &map, Noeud nouveauNoeud, const Noeud &noeudRemplace);
+
+	void 				_moveLeft(Noeud const &noeud, Map const &map, Point const &p);
+	void 				_moveRight(Noeud const &noeud, Map const &map, Point const &p);
+	void 				_moveUp(Noeud const &noeud, Map const &map, Point const &p);
+	void 				_moveDown(Noeud const &noeud, Map const &map, Point const &p);
 
 	void 				_addAllOpenList(Noeud const &noeud, Map const &map);
 

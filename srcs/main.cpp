@@ -14,11 +14,6 @@
 #include <string>
 #include "Npuzzle.hpp"
 
-void foo(void *ptr) 
-{
-	Npuzzle 	*puzzle = static_cast<Npuzzle *>(ptr);
-	puzzle->run();
-}
 /*
 void foo(void *ptr) 
 {
