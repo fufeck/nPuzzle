@@ -15,17 +15,19 @@
 #include "Npuzzle.hpp"
 
 
-Npuzzle::Npuzzle(std::string const &fileName) : _n(0) {
+Npuzzle::Npuzzle(int ac, char **av) : _n(0) {
+	std::string	fileName(av[1]);
 	Point		emptyCase = this->_createMap(fileName);
-	//std::cout << this->_n << std::endl;
-	//this->_displayMap(this->_mapStart);
+	std::cout << this->_n << std::endl;
+	this->_displayMap(this->_mapStart);
 	this->_createFinishMap();
-
+	this->_setHeuristique(ac, av);
+	this->_displayMap(this->_mapFinish);
+	std::cout << "=====================" << std::endl;
+	
 	Noeud noeud;
 
-	//noeud.H = this->_getHeuristique(this->_mapStart);
-	//noeud.F = 0;
-	noeud.F = this->_getHeuristiqueMap(this->_mapStart);
+	noeud.F = (this->*_heuristique)(this->_mapStart);
 	noeud.G = 0;
 	noeud.parent = NO;
 	noeud.emptyCase = emptyCase;
@@ -40,6 +42,21 @@ Npuzzle::~Npuzzle() {
 /************************/
 /******USEFULL*FUNC******/
 /************************/
+
+void					Npuzzle::_setHeuristique(int ac, char **av) {
+	this->_heuristique = &Npuzzle::_heuristiqueManathan;
+	if (ac == 3) {
+		std::string 		h(av[2]);
+		if (h == "SIMPLE") {
+			this->_heuristique = &Npuzzle::_heuristiqueSimple;
+		} else if (h == "LINEAR") {
+			this->_heuristique = &Npuzzle::_heuristiqueLinear;
+		} else if (h != "MANATHAN") {
+			std::cerr << "ERROR : Heuristique " << h << " doesnt exist." << std::endl;
+			throw std::exception();
+		}
+	}
+}
 
 void					Npuzzle::_displayMap(Map const &map) const {
 	for (int y = 0; y < this->_n; ++y) {
@@ -62,7 +79,7 @@ Point					Npuzzle::_createMap(std::string const &filename) {
 
 	file.open(filename.c_str());
 	if (!file.is_open()) {
-		std::cerr << "file can't be open" << std::endl;
+		std::cerr << "ERROR : File " << filename << " can't be open." << std::endl;
 		throw std::exception();
 	}
 
@@ -160,69 +177,65 @@ void					Npuzzle::_createFinishMap(void) {
 	this->_pointFinish[EMPTY_CASE] = p;
 	this->_pointFinish.erase(this->_n * this->_n);
 	this->_mapFinish[p.y][p.x] = EMPTY_CASE;
-	//std::cout << std::endl;
-	//this->_displayMap(this->_mapFinish);
 }
 
 /************************/
 /******HEURISTIQUES******/
 /************************/
 
-int 					Npuzzle::_heuristiqueManathanMap(const Map &map) {
+int 					Npuzzle::_addLinearConflict(const Map &map, int xx, int yy) {
 	int 				k = 0;
 
 	for (int y = 0; y < this->_n; ++y) {
 		for (int x = 0; x < this->_n; ++x) {
-			Point 		p = this->_pointFinish[map[y][x]];
-			k += ((y - p.y >= 0) ? (y - p.y) : (-(y - p.y))) + ((x - p.x >= 0) ? (x - p.x) : (-(x - p.x)));
+			if ((y == yy && x != xx) || (x == xx && y != yy)) {
+				Point 		p = this->_pointFinish[map[y][x]];
+				if (p.x == xx && p.y == yy) {
+					k++;
+				}
+			}
 		}
 	}
-	return k;
+	return (k);
 }
 
-int 					Npuzzle::_heuristiqueSimpleMap(const Map &map) {
+int 					Npuzzle::_heuristiqueSimple(const Map &map) {
 	int 				k = 0;
-
 
 	for (int y = 0; y < this->_n; ++y) {
 		for (int x = 0; x < this->_n; ++x) {
 			if (map[y][x] != this->_mapFinish[y][x])
-				++k;
+				k += 2;
 		}
 	}
 	
 	return k;
 }
 
-int 					Npuzzle::_getHeuristiqueMap(const Map &map) {
-	return this->_heuristiqueManathanMap(map);
-}
-
-
-int 					Npuzzle::_heuristiqueManathanLoop(Map const &map, Point const &p1, Point const &p2) {
-	Point 				a = this->_pointFinish[map[p1.y][p1.x]];
-	Point				b = this->_pointFinish[map[p2.y][p2.x]];
+int 					Npuzzle::_heuristiqueManathan(const Map &map) {
 	int 				k = 0;
 
-	k -= ((a.y - p1.y >= 0) ? (a.y - p1.y) : (-(a.y - p1.y))) + ((a.x - p1.x >= 0) ? (a.x - p1.x) : (-(a.x - p1.x)));
-	k -= ((b.y - p2.y >= 0) ? (b.y - p2.y) : (-(b.y - p2.y))) + ((b.x - p2.x >= 0) ? (b.x - p2.x) : (-(b.x - p2.x)));
-	k += ((a.y - p2.y >= 0) ? (a.y - p2.y) : (-(a.y - p2.y))) + ((a.x - p2.x >= 0) ? (a.x - p2.x) : (-(a.x - p2.x)));
-	k += ((b.y - p1.y >= 0) ? (b.y - p1.y) : (-(b.y - p1.y))) + ((b.x - p1.x >= 0) ? (b.x - p1.x) : (-(b.x - p1.x)));
+	for (int y = 0; y < this->_n; ++y) {
+		for (int x = 0; x < this->_n; ++x) {
+			Point 		p = this->_pointFinish[map[y][x]];
+			k += ((y - p.y >= 0) ? (y - p.y) : (-(y - p.y))) + ((x - p.x >= 0) ? (x - p.x) : (-(x - p.x)));
+			k += this->_addLinearConflict(map, x, y);
+		}
+	}
 	return k;
 }
-/*
-int 					Npuzzle::_heuristiqueSimpleLoop(Map const &map, Point const &p1, Point const &p2) {
+
+int 					Npuzzle::_heuristiqueLinear(const Map &map) {
 	int 				k = 0;
 
-	k -= (this->_pointFinish[p1.y][p1.x] == map[p1.y][p1.x]) ? (1) : (0);
-	k -= (this->_pointFinish[p2.y][p2.x] == map[p2.y][p2.x]) ? (1) : (0);
-	k += (this->_pointFinish[p1.y][p1.x] == map[p2.y][p2.x]) ? (1) : (0);
-	k += (this->_pointFinish[p2.y][p2.x] == map[p1.y][p1.x]) ? (1) : (0);
-	return (p1 != p2) ? (1) : (0);
-}
-*/
-int 					Npuzzle::_getHeuristiqueLoop(Map const &map, Point const &p1, Point const &p2) {
-	return this->_heuristiqueManathanLoop(map, p1, p2);
+	for (int y = 0; y < this->_n; ++y) {
+		for (int x = 0; x < this->_n; ++x) {
+			Point 		p = this->_pointFinish[map[y][x]];
+			k += ((y - p.y >= 0) ? (y - p.y) : (-(y - p.y))) + ((x - p.x >= 0) ? (x - p.x) : (-(x - p.x)));
+			k += this->_addLinearConflict(map, x, y);
+		}
+	}
+	return k;
 }
 
 /************************/
@@ -230,7 +243,7 @@ int 					Npuzzle::_getHeuristiqueLoop(Map const &map, Point const &p1, Point con
 /************************/
 
 void 					Npuzzle::_updateOpened(void) {
-	if (this->_openList.empty() && !this->_saveList.empty()) {
+	if ((this->_openList.empty() || this->_openList.size() < 2) && !this->_saveList.empty()) {
 		int max = 1000;
 		for (Liste::iterator it = ++this->_saveList.begin(); it != this->_saveList.end(); ++it) {
 			if (max > 0) {
@@ -247,7 +260,7 @@ void 					Npuzzle::_updateOpened(void) {
 void 					Npuzzle::_saveOpened(int moyenn) {
 	int 	size = this->_openList.size();
 
-	if (size > 1000) {
+	if (size > 1500) {
 		moyenn = moyenn / size;
 		for (Liste::iterator it = ++this->_openList.begin(); it != this->_openList.end(); ++it) {
 			if (it->second.F > moyenn) {
@@ -264,7 +277,6 @@ void					Npuzzle::_bestMapOpened(Map &ret) {
 	int 				moyenn = min;
 
 	this->_updateOpened();
-
 	for (Liste::iterator it = ++this->_openList.begin(); it != this->_openList.end(); ++it) {
 		if (it->second.F < min) {
 			ret = it->first;
@@ -272,31 +284,22 @@ void					Npuzzle::_bestMapOpened(Map &ret) {
 		}
 		moyenn += it->second.F;
 	}
-
 	this->_saveOpened(moyenn);
 }
 
-Noeud					Npuzzle::_createNoeud(int const move, Point const emptyCase, int const f) {
-	
-/*	Noeud 			nNoeud;
+Noeud					Npuzzle::_createNoeud(int const move, Point const emptyCase, int const f, Noeud const & noeud) {
+	Noeud 			nNoeud;
 
 	nNoeud.G = noeud.G + 1;
-	nNoeud.H = noeud.h + k;
-	nNoeud.F = nNoeud.G + nNoeud.H;
-	nNoeud.parent = map;
-	
-	nNoeud.emptyCase = nEmptyCase;
-	return nNoeud;*/
-	Noeud 			noeud;
-
-	noeud.F = f + 1;
-	noeud.parent = move;
-	noeud.emptyCase = emptyCase;
-	return noeud;
+	nNoeud.F = f + noeud.F + 1;
+	nNoeud.parent = move;
+	nNoeud.emptyCase = emptyCase;
+	return nNoeud;
 }
 
 void 					Npuzzle::_addInOpenList(const Map &map, Noeud newNoeud, Noeud const &oldNoeud) {
-	if ((newNoeud.G = oldNoeud.G + 1) > 100)
+	
+	if (newNoeud.G > 10000)
 		return ;
 	if (this->_openList.find(map) == this->_openList.end() && \
 		this->_saveList.find(map) == this->_saveList.end() && \
@@ -321,8 +324,8 @@ void 					Npuzzle::_moveLeft(Noeud const &noeud, Map const &map, Point const &p)
 		nMap[p.y][p.x] = map[n.y][n.x];
 		nMap[n.y][n.x] = map[p.y][p.x];
 
-		int 			f = this->_getHeuristiqueLoop(map, p, n) + noeud.F;
-		this->_addInOpenList(nMap, this->_createNoeud(UP, n, f), noeud);
+		int 			f = (this->*_heuristique)(map);
+		this->_addInOpenList(nMap, this->_createNoeud(LEFT, n, f, noeud), noeud);
 	}
 }
 
@@ -336,8 +339,8 @@ void 					Npuzzle::_moveRight(Noeud const &noeud, Map const &map, Point const &p
 		nMap[p.y][p.x] = map[n.y][n.x];
 		nMap[n.y][n.x] = map[p.y][p.x];
 
-		int 			f = this->_getHeuristiqueLoop(map, p, n) + noeud.F;
-		this->_addInOpenList(nMap, this->_createNoeud(DOWN, n, f), noeud);
+		int 			f = (this->*_heuristique)(map);
+		this->_addInOpenList(nMap, this->_createNoeud(RIGHT, n, f, noeud), noeud);
 	}
 }
 
@@ -351,8 +354,8 @@ void 					Npuzzle::_moveUp(Noeud const &noeud, Map const &map, Point const &p) {
 		nMap[p.y][p.x] = map[n.y][n.x];
 		nMap[n.y][n.x] = map[p.y][p.x];
 
-		int 			f = this->_getHeuristiqueLoop(map, p, n) + noeud.F;
-		this->_addInOpenList(nMap, this->_createNoeud(DOWN, n, f), noeud);
+		int 			f = (this->*_heuristique)(map);
+		this->_addInOpenList(nMap, this->_createNoeud(UP, n, f, noeud), noeud);
 	}
 }
 
@@ -366,8 +369,8 @@ void 					Npuzzle::_moveDown(Noeud const &noeud, Map const &map, Point const &p)
 		nMap[p.y][p.x] = map[n.y][n.x];
 		nMap[n.y][n.x] = map[p.y][p.x];
 
-		int 			f = this->_getHeuristiqueLoop(map, p, n) + noeud.F;
-		this->_addInOpenList(nMap, this->_createNoeud(DOWN, n, f), noeud);
+		int 			f = (this->*_heuristique)(map);
+		this->_addInOpenList(nMap, this->_createNoeud(DOWN, n, f, noeud), noeud);
 	}
 }
 
@@ -390,7 +393,6 @@ void 					Npuzzle::run(void) {
 	Noeud 				noeud;
 	Map 				map;
 
-	//std::cout << "=======================" << std::endl;
 	clock_t t = clock();
 	while (!this->_openList.empty() && !this->_openList.empty()) {
 		this->_bestMapOpened(map);
@@ -406,10 +408,9 @@ void 					Npuzzle::run(void) {
 		}
 		this->_addAllOpenList(noeud, map);
 		
-		//std::cout << "=======================" << std::endl;
-		//sleep(1);
 	}
-	std::cout << clock() - t << std::endl;
+	std::cout << "En " << noeud.G << " coups." << std::endl;
+	std::cout << static_cast<double>(clock() - t) / 1000000.0 << " secondes" << std::endl;
 	if (map != this->_mapFinish) {
 		std::cout << "pas de solution" << std::endl;
 		return;

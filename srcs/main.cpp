@@ -23,11 +23,9 @@ void foo(void *ptr)
 */
 int 			main(int ac, char **av) {
 
-	if (ac == 2) {
-		std::string	fileName(av[1]);
-		
+	if (ac == 2 || ac == 3) {
 		try {
-			Npuzzle			puzzle(fileName);
+			Npuzzle			puzzle(ac, av);
 
 			puzzle.run();
 		} catch (std::exception & e) {
